@@ -72,17 +72,17 @@ bool controlarHoraDia(int *horaDia, int *luz) {
 
 void mostrarMenu() {
     printf("\nSon las 2 de la tarde de un dia soleado, te encontras en una habitacion utilizada como oficina de una vivienda familiar\n");
-    printf("\nValor referencial de la LUZ = 850 lux\n");
+    printf("\nValor de la LUZ = 850 lux\n");
     printf("\nMenu de opciones de perturbaciones:\n");
     printf("1. Abrir cortinas (Aumenta luz en 400)\n");
-    printf("2. El sol da directo en la ventan (Aumenta luz en 300)\n");
+    printf("2. El sol da directo en la ventana (Aumenta luz en 300)\n");
     printf("3. Cerrar cortinas (Disminuye luz en 400)\n");
     printf("4. Se Nublo (Disminuye luz en 300)\n");
     printf("5. Simular 5 perturbaciones internas\n");
-    printf("6. Simular salida de Controlador PID de un Aire Acondicionado, con diversas perturbaciones aleatorias\n");
-    printf("7: Graficar la relacion de la perturbacion con la salida del sistema \n");
-    printf("8: Graficar la relacion de entrada con la salida del controlador \n");
-    printf("9: Graficar la relacion de la perturbacion con la salida del controlador \n");
+    //printf("6. Simular salida de Controlador PID de un Aire Acondicionado, con diversas perturbaciones aleatorias\n");
+    printf("6: Graficar la relacion de la perturbacion con la salida del sistema \n");
+    printf("7: Graficar la relacion de entrada con la salida del controlador \n");
+    printf("8: Graficar la relacion de la perturbacion con la salida del controlador \n");
     printf("0. Salir\n");
     printf("Ingrese su opcion: ");
 }
@@ -187,7 +187,7 @@ int main() {
         switch (opcion) {
             case 1: aumentarLuz(&luz, 400);
                     printf("La salida del sistema de de 1250\n");
-                    printf("El sistema detecto mayor intensidad luminica de la deseada, se apagaran las luces del techo\n");
+                    printf("El sistema detecto mayor intensidad luminica de la deseada, se apagaran las luces del techo para volver al valor referencial\n");
                     contador ++;
                     double controller_output = controladorTemp(1250);
                     fprintf(file, "%d %d \n", 400, 1250);
@@ -197,7 +197,7 @@ int main() {
                     break;
             case 2: aumentarLuz(&luz, 300);
                     printf("La salida del sistema de de 1150\n");
-                    printf("El sistema detecto mayor intensidad luminica de la deseada, se apagaran las luces del escritorio\n");
+                    printf("El sistema detecto mayor intensidad luminica de la deseada, se apagaran las luces del escritorio para volver al valor referencial\n");
                     contador ++;
                     double controller_output2 = controladorTemp(1150);
                     fprintf(file, "%d %d \n", 300, 1150);
@@ -207,7 +207,7 @@ int main() {
                     break;
             case 3: disminuirLuz(&luz, 400);
                     printf("La salida del sistema de de 450\n");
-                    printf("El sistema detecto menor intensidad luminica de la deseada, se prenderan las luces del techo\n");
+                    printf("El sistema detecto menor intensidad luminica de la deseada, se prenderan las luces del techo para volver al valor referencial\n");
                     contador ++;
                     double controller_output3 = controladorTemp(450);
                     fprintf(file, "%d %d \n", -400, 450);
@@ -217,7 +217,7 @@ int main() {
                     break;
             case 4: disminuirLuz(&luz, 300);
                     printf("La salida del sistema de de 550\n");
-                    printf("El sistema detecto menor intensidad luminica de la deseada, se prenderan las luces del escritorio\n"); 
+                    printf("El sistema detecto menor intensidad luminica de la deseada, se prenderan las luces del escritorio para volver al valor referencial\n"); 
                     contador ++;
                     double controller_output4 = controladorTemp(550);
                     fprintf(file, "%d %d \n", -300, 550);
@@ -225,12 +225,12 @@ int main() {
                     fprintf(file1, "%d %.2f \n", 550, controller_output4);
                     fprintf(file2, "%d %.2f \n", -300, controller_output4);
                     break;
-            case 5: 
+            /*case 5: 
                     perturbacionesAleatorias(5, file,file1,file2);
+                    break;*/
+            case 5: controladorAire(); 
                     break;
-            case 6: controladorAire(); 
-                    break;
-            case 7: fclose(file);
+            case 6: fclose(file);
                     FILE *gnuplot = popen("gnuplot -persistent", "w");
                     fprintf(gnuplot, "set title 'Relacion de la perturbacion con la salida del sistema'\n");
                     fprintf(gnuplot, "set xlabel 'Perturbacion (LUX)'\n");
@@ -238,7 +238,7 @@ int main() {
                     fprintf(gnuplot, "plot 'pert_out.txt' using 1:2 with lines title 'Salida del Sistema'\n");
                     fclose(gnuplot);
                     break;
-            case 8: fclose(file1);
+            case 7: fclose(file1);
                     FILE *gnuplot1 = popen("gnuplot -persistent", "w");
                     fprintf(gnuplot1, "set title 'Relacion de entrada con la salida del controlador'\n");
                     fprintf(gnuplot1, "set xlabel 'Entrada (LUX)'\n");
@@ -246,7 +246,7 @@ int main() {
                     fprintf(gnuplot1, "plot 'in_controller.txt' using 1:2 with points title 'Controlador'\n");
                     fclose(gnuplot1);
                     break;
-            case 9: fclose(file2);
+            case 8: fclose(file2);
                     FILE *gnuplot2 = popen("gnuplot -persistent", "w");
                     fprintf(gnuplot2, "set title 'Relacion de la perturbacion con la salida del controlador'\n");
                     fprintf(gnuplot2, "set xlabel 'Perturbacion (LUX)'\n");
