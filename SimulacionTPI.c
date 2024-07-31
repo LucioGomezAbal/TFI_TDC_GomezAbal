@@ -71,14 +71,14 @@ bool controlarHoraDia(int *horaDia, int *luz) {
 }
 
 void mostrarMenu() {
-    printf("\nSon las 2 de la tarde de un dia soleado de Julio, te encontras en una habitacion utilizada como oficina de una vivienda familiar\n");
+    printf("\nSon las 2 de la tarde de un dia soleado, te encontras en una habitacion utilizada como oficina de una vivienda familiar\n");
     printf("\nValor referencial de la LUZ = 850 lux\n");
     printf("\nMenu de opciones de perturbaciones:\n");
     printf("1. Abrir cortinas (Aumenta luz en 400)\n");
-    printf("2. Salio el Sol (Aumenta luz en 300)\n");
+    printf("2. El sol da directo en la ventan (Aumenta luz en 300)\n");
     printf("3. Cerrar cortinas (Disminuye luz en 400)\n");
     printf("4. Se Nublo (Disminuye luz en 300)\n");
-    printf("5. Simular 5 perturbaciones\n");
+    printf("5. Simular 5 perturbaciones internas\n");
     printf("6. Simular salida de Controlador PID de un Aire Acondicionado, con diversas perturbaciones aleatorias\n");
     printf("7: Graficar la relacion de la perturbacion con la salida del sistema \n");
     printf("8: Graficar la relacion de entrada con la salida del controlador \n");
@@ -121,14 +121,14 @@ void controladorAire(){
     // Generar gráfico usando GNUplot
     FILE *gnuplot = popen("gnuplot -persistent", "w");
     fprintf(gnuplot, "set title 'Simulación del Sistema de Control de Temperatura de un Aire Acondicionado'\n");
-    fprintf(gnuplot, "set xlabel 'Controlador'\n");
-    fprintf(gnuplot, "set ylabel 'Temperatura (°C)'\n");
+    fprintf(gnuplot, "set xlabel 'Temperatura (°C)'\n");
+    fprintf(gnuplot, "set ylabel 'Controlador'\n");
     fprintf(gnuplot, "plot 'temperature_data.txt' using 1:2 with points title 'Temperatura'\n");
     fclose(gnuplot);
 }
 double controladorTemp(double current_lux){
     PIDController pid;
-    PID_Init(&pid, 2.0, 0.1, 0.5, 850); // Inicialización del PID con Kp, Ki, Kd y setpoint
+    PID_Init(&pid, 2.0, 0.12, 0.48, 850); // Inicialización del PID con Kp, Ki, Kd y setpoint
     double PIDideal = PID_Compute(&pid, 850, contador);
     double lux_output = PID_Compute(&pid, current_lux, contador);
     return lux_output;
@@ -138,9 +138,9 @@ void perturbacionesAleatorias(int cantidad, FILE* file, FILE* file1, FILE* file2
     while(cantidad > 0){
         int random_value = (rand() % 1201) - 600;
         contador++;
-        int valorDeLuz = 850 + random_value;
-        printf("Hubo una perturbacion de %d LUX. La intensidad luminica es de %d el controlador debera trabajar para llevarlo a su valor referencial de 850 \n", random_value , valorDeLuz);
+        int valorDeLuz = 850 + random_value; 
         double controller_output = controladorTemp(valorDeLuz);
+        printf("Hubo una perturbacion interna que llevo a una variacion de %d LUX\n. La intensidad luminica actual es de %d\n. El controlador debera trabajar para llevarlo a su valor referencial de 850 \n", random_value , valorDeLuz);
         fprintf(file, "%d %d \n", random_value, valorDeLuz);
         fprintf(file1, "%d %d \n", 850, 0);
         fprintf(file1, "%d %.2f \n", valorDeLuz, controller_output);
