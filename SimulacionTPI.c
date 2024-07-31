@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <time.h>
+
+double contador = 0;
 typedef struct {
     double Kp; // Constante proporcional
     double Ki; // Constante integral
@@ -69,23 +71,22 @@ bool controlarHoraDia(int *horaDia, int *luz) {
 }
 
 void mostrarMenu() {
+    printf("\nSon las 2 de la tarde de un dia soleado de Julio, te encontras en una habitacion utilizada como oficina de una vivienda familiar\n");
+    printf("\nValor referencial de la LUZ = 850 lux\n");
     printf("\nMenu de opciones de perturbaciones:\n");
     printf("1. Abrir cortinas (Aumenta luz en 400)\n");
-    printf("2. Encender lampara (Aumenta luz en 300)\n");
-    printf("3. Encender lampara de escritorio (Aumenta luz en 200)\n");
-    printf("4. Encender luz de techo (Aumenta luz en 200)\n");
-    printf("5. Salio el Sol (Aumenta luz en 300)\n");
-    printf("6. Cerrar cortinas (Disminuye luz en 400)\n");
-    printf("7. Apagar lampara (Disminuye luz en 300)\n");
-    printf("8. Apagar lampara de escritorio (Disminuye luz en 200)\n");
-    printf("9. Apagar luz de techo (Disminuye luz en 200)\n");
-    printf("10. Se Nublo (Disminuye luz en 300)\n");
-    printf("11. Paso una hora (No hay cambios en el ambiente)\n");
-    printf("12. Simular salida de Controlador PID de un Aire Acondicionado, con diversas perturbaciones aleatorias\n");
+    printf("2. Salio el Sol (Aumenta luz en 300)\n");
+    printf("3. Cerrar cortinas (Disminuye luz en 400)\n");
+    printf("4. Se Nublo (Disminuye luz en 300)\n");
+    printf("5. Simular 5 perturbaciones\n");
+    printf("6. Simular salida de Controlador PID de un Aire Acondicionado, con diversas perturbaciones aleatorias\n");
+    printf("7: Graficar la relacion de la perturbacion con la salida del sistema \n");
+    printf("8: Graficar la relacion de entrada con la salida del controlador \n");
+    printf("9: Graficar la relacion de la perturbacion con la salida del controlador \n");
     printf("0. Salir\n");
     printf("Ingrese su opcion: ");
 }
-void controlador(){
+void controladorAire(){
     PIDController pid;
     PID_Init(&pid, 2.0, 0.1, 0.5, 24.0); // Inicialización del PID con Kp, Ki, Kd y setpoint
 
@@ -94,6 +95,10 @@ void controlador(){
     double simulation_time = 15.0; // Tiempo total de simulación (600 segundos)
     double time_elapsed = 0.0;
     double PIDideal = PID_Compute(&pid, 24.0, dt);
+      FILE *file = fopen("temperature_data.txt", "w");
+    if (file == NULL) {
+        printf("Error al abrir el archivo.\n");
+    }
     srand(time(NULL)); // Inicialización del generador de números aleatorios
      printf("Temp Ideal %.1f, PID %4.f \n",24.0,PIDideal);
     while (time_elapsed < simulation_time) {
@@ -106,9 +111,41 @@ void controlador(){
         current_temp += perturbation;
         double PIDideal = PID_Compute(&pid, 24.0, dt);
         // Impresión de la temperatura actual y la salida del PID
+        
         printf("Tiempo: %.1f s, Temperatura: %.2f °C, Salida del PID: %.2f\n", time_elapsed, current_temp, heater_output);
-       
+        fprintf(file, "%.2f %.2f %.1f\n", current_temp, heater_output, time_elapsed);
         time_elapsed += dt;
+    }
+     fclose(file);
+
+    // Generar gráfico usando GNUplot
+    FILE *gnuplot = popen("gnuplot -persistent", "w");
+    fprintf(gnuplot, "set title 'Simulación del Sistema de Control de Temperatura de un Aire Acondicionado'\n");
+    fprintf(gnuplot, "set xlabel 'Controlador'\n");
+    fprintf(gnuplot, "set ylabel 'Temperatura (°C)'\n");
+    fprintf(gnuplot, "plot 'temperature_data.txt' using 1:2 with points title 'Temperatura'\n");
+    fclose(gnuplot);
+}
+double controladorTemp(double current_lux){
+    PIDController pid;
+    PID_Init(&pid, 2.0, 0.1, 0.5, 850); // Inicialización del PID con Kp, Ki, Kd y setpoint
+    double PIDideal = PID_Compute(&pid, 850, contador);
+    double lux_output = PID_Compute(&pid, current_lux, contador);
+    return lux_output;
+}
+void perturbacionesAleatorias(int cantidad, FILE* file, FILE* file1, FILE* file2){
+   srand(time(NULL));
+    while(cantidad > 0){
+        int random_value = (rand() % 1201) - 600;
+        contador++;
+        int valorDeLuz = 850 + random_value;
+        printf("Hubo una perturbacion de %d LUX. La intensidad luminica es de %d el controlador debera trabajar para llevarlo a su valor referencial de 850 \n", random_value , valorDeLuz);
+        double controller_output = controladorTemp(valorDeLuz);
+        fprintf(file, "%d %d \n", random_value, valorDeLuz);
+        fprintf(file1, "%d %d \n", 850, 0);
+        fprintf(file1, "%d %.2f \n", valorDeLuz, controller_output);
+        fprintf(file2, "%d %.2f \n", random_value, controller_output);
+        cantidad--;
     }
 }
 void mostrarEstadoLuz(int luz, bool luz_prendida) {
@@ -128,70 +165,98 @@ int main() {
     int horaDia = 0;
     bool luz_prendida = false;
     int opcion;
-
+      FILE *file = fopen("pert_out.txt", "w");
+    if (file == NULL) {
+        printf("Error al abrir el archivo.\n");
+        return 1;
+    }
+      FILE *file1 = fopen("in_controller.txt", "w");
+    if (file1 == NULL) {
+        printf("Error al abrir el archivo.\n");
+        return 1;
+    }
+      FILE *file2 = fopen("pert_controller.txt", "w");
+    if (file2 == NULL) {
+        printf("Error al abrir el archivo.\n");
+        return 1;
+    }
     while (1) {
         mostrarMenu();
         scanf("%d", &opcion);
 
         switch (opcion) {
             case 1: aumentarLuz(&luz, 400);
-                    aumentarHoraDia(&horaDia);
+                    printf("La salida del sistema de de 1250\n");
+                    printf("El sistema detecto mayor intensidad luminica de la deseada, se apagaran las luces del techo\n");
+                    contador ++;
+                    double controller_output = controladorTemp(1250);
+                    fprintf(file, "%d %d \n", 400, 1250);
+                    fprintf(file1, "%d %d \n", 850, 0);
+                    fprintf(file1, "%d %.2f \n", 1250, controller_output);
+                    fprintf(file2, "%d %.2f \n", 400, controller_output);
                     break;
-            case 2: aumentarLuz(&luz, 300); 
-                    aumentarHoraDia(&horaDia);
+            case 2: aumentarLuz(&luz, 300);
+                    printf("La salida del sistema de de 1150\n");
+                    printf("El sistema detecto mayor intensidad luminica de la deseada, se apagaran las luces del escritorio\n");
+                    contador ++;
+                    double controller_output2 = controladorTemp(1150);
+                    fprintf(file, "%d %d \n", 300, 1150);
+                    fprintf(file1, "%d %d \n", 850, 0);
+                    fprintf(file1, "%d %.2f \n", 1150, controller_output2);
+                    fprintf(file2, "%d %.2f \n", 300, controller_output2);
                     break;
-            case 3: aumentarLuz(&luz, 200); 
-                    aumentarHoraDia(&horaDia);
+            case 3: disminuirLuz(&luz, 400);
+                    printf("La salida del sistema de de 450\n");
+                    printf("El sistema detecto menor intensidad luminica de la deseada, se prenderan las luces del techo\n");
+                    contador ++;
+                    double controller_output3 = controladorTemp(450);
+                    fprintf(file, "%d %d \n", -400, 450);
+                    fprintf(file1, "%d %d \n", 850, 0);
+                    fprintf(file1, "%d %.2f \n", 450, controller_output3);
+                    fprintf(file2, "%d %.2f \n", -400, controller_output3);
                     break;
-            case 4: aumentarLuz(&luz, 200); 
-                    aumentarHoraDia(&horaDia);
+            case 4: disminuirLuz(&luz, 300);
+                    printf("La salida del sistema de de 550\n");
+                    printf("El sistema detecto menor intensidad luminica de la deseada, se prenderan las luces del escritorio\n"); 
+                    contador ++;
+                    double controller_output4 = controladorTemp(550);
+                    fprintf(file, "%d %d \n", -300, 550);
+                    fprintf(file1, "%d %d \n", 850, 0);
+                    fprintf(file1, "%d %.2f \n", 550, controller_output4);
+                    fprintf(file2, "%d %.2f \n", -300, controller_output4);
                     break;
-            case 5: aumentarLuz(&luz, 300); 
-                    aumentarHoraDia(&horaDia);
+            case 5: 
+                    perturbacionesAleatorias(5, file,file1,file2);
                     break;
-            case 6: disminuirLuz(&luz, 400); 
-                    aumentarHoraDia(&horaDia);
+            case 6: controladorAire(); 
                     break;
-            case 7: disminuirLuz(&luz, 300); 
-                    aumentarHoraDia(&horaDia);
+            case 7: fclose(file);
+                    FILE *gnuplot = popen("gnuplot -persistent", "w");
+                    fprintf(gnuplot, "set title 'Relacion de la perturbacion con la salida del sistema'\n");
+                    fprintf(gnuplot, "set xlabel 'Perturbacion (LUX)'\n");
+                    fprintf(gnuplot, "set ylabel 'Salida del Sistema (LUX)'\n");
+                    fprintf(gnuplot, "plot 'pert_out.txt' using 1:2 with lines title 'Salida del Sistema'\n");
+                    fclose(gnuplot);
                     break;
-            case 8: disminuirLuz(&luz, 200); 
-                    aumentarHoraDia(&horaDia);
+            case 8: fclose(file1);
+                    FILE *gnuplot1 = popen("gnuplot -persistent", "w");
+                    fprintf(gnuplot1, "set title 'Relacion de entrada con la salida del controlador'\n");
+                    fprintf(gnuplot1, "set xlabel 'Entrada (LUX)'\n");
+                    fprintf(gnuplot1, "set ylabel 'Controlador'\n");
+                    fprintf(gnuplot1, "plot 'in_controller.txt' using 1:2 with points title 'Controlador'\n");
+                    fclose(gnuplot1);
                     break;
-            case 9: disminuirLuz(&luz, 200); 
-                    aumentarHoraDia(&horaDia);
+            case 9: fclose(file2);
+                    FILE *gnuplot2 = popen("gnuplot -persistent", "w");
+                    fprintf(gnuplot2, "set title 'Relacion de la perturbacion con la salida del controlador'\n");
+                    fprintf(gnuplot2, "set xlabel 'Perturbacion (LUX)'\n");
+                    fprintf(gnuplot2, "set ylabel 'Controlador'\n");
+                    fprintf(gnuplot2, "plot 'pert_controller.txt' using 1:2 with points title 'Controlador'\n");
+                    fclose(gnuplot2);
                     break;
-            case 10: disminuirLuz(&luz, 300); 
-                    aumentarHoraDia(&horaDia);
-                    break;
-            case 11 :
-                aumentarHoraDia(&horaDia);
-                break;
-            case 12 :
-                controlador();
-                break;
             case 0: printf("Saliendo...\n"); return 0;
             default: printf("Opcion no válida\n"); continue;
         }
-
-        if (controlarHoraDia(&horaDia, &luz)) { 
-            break;  // Finaliza el programa si controlarHoraDia retorna true
-        }
-         if (luz < 0) {
-        luz = 0;
-    }
-
-     if (luz < 300) { // Umbral para encender la luz
-    luz_prendida = true;
-    printf("¡La luz se ha encendido debido a la baja intensidad!\n");
-} else if (luz > 800) { // Umbral para apagar la luz
-    luz_prendida = false;
-    printf("¡Hay mucha luz en el ambiente, conviene apagarla!\n");
-} else {
-    // Si la intensidad de luz está entre 300 y 800, la luz no cambia de estado
-    luz_prendida = luz_prendida; // Mantiene el estado actual
-}
-     mostrarEstadoLuz(luz, luz_prendida);
     }
 
     return 0;
